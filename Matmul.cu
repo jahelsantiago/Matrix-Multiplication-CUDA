@@ -18,7 +18,8 @@ struct Matrix
  * @brief create a function that returns a matrix with the numbers a to (n^2) + a
  * @param rows size of the matrix
  * @param cols size of the matrix
- * @param start start value of the matrix
+ * @param start start value of the matrix numbers [start, start+ 1, ..., start + (n^2)]
+ * @param factor factor to multiply the numbers factor * [start, start+ 1, ..., start + (n^2)]
  * @return a matrix with the numbers a to (n^2) + a
  */
 
@@ -52,10 +53,12 @@ Matrix *createMatrix(int rows, int cols, int start, float factor)
 /**
  * @brief print the matrix
  * @param matrix pointer to the matrix
+ * @param name name of the matrix
  */
-void printMatrix(Matrix *matrix)
+void printMatrix(Matrix *matrix, char *name)
 {
     int i, j;
+    printf("%s\n", name);
     for (i = 0; i < matrix->rows; i++)
     {
         for (j = 0; j < matrix->cols; j++)
@@ -264,21 +267,18 @@ int main(int argc, char *argv[])
     int a_cols = 2;
     int a_start = 1;
     Matrix *matrix_a = createMatrix(a_rows, a_cols, a_start, 1);
-    printf("Matrix A:\n");
-    printMatrix(matrix_a);
+    printMatrix(matrix_a, "Matrix A");
 
     // create a matrix of size 3x3
     int b_rows = 2;
     int b_cols = 9;
     int b_start = 1;
     Matrix *matrix_b = createMatrix(b_rows, b_cols, b_start, 1);
-    printf("Matrix B:\n");
-    printMatrix(matrix_b);
+    printMatrix(matrix_b, "Matrix B");
 
     // mutiply the matrices
     Matrix *matrix_c = parallelMatrixMultiplication(matrix_a, matrix_b);
-    printf("Matrix C:\n");
-    printMatrix(matrix_c);
+    printMatrix(matrix_c, "Matrix C");
 
     // free the memory
     freeMatrix(matrix_a, false);
