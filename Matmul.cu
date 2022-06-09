@@ -96,110 +96,193 @@ void freeMatrix(Matrix *matrix, bool isCuda)
     free(matrix);
 }
 
-Matrix *matrixMultiplication(Matrix *matrix_a, Matrix *matrix_b)
+/**
+ * @brief multiply two matrices
+ * @param matrix_a pointer to the first matrix
+ * @param matrix_b pointer to the second matrix
+ * @param matrix_c pointer to the result matrix
+ * @param rows_a number of rows of the first matrix
+ * @param cols_a number of columns of the first matrix
+ * @param rows_b number of rows of the second matrix
+ * @param cols_b number of columns of the second matrix  
+ * @return the result of the multiplication
+ */
+__global__ void matrixMultiplicationKernel(float *matrix_a, float *matrix_b, float *matrix_c, int rows_a, int cols_a, int rows_b, int cols_b)
 {
-    int i, j, k;
-    Matrix *matrix_c = (Matrix *)malloc(sizeof(Matrix));
-    matrix_c->rows = matrix_a->rows;
-    matrix_c->cols = matrix_b->cols;
-    matrix_c->data = (float **)malloc(matrix_c->rows * sizeof(float *));
-    for (i = 0; i < matrix_c->rows; i++)
-    {
-        matrix_c->data[i] = (float *)malloc(matrix_c->cols * sizeof(float));
-    }
-    for (i = 0; i < matrix_c->rows; i++)
-    {
-        for (j = 0; j < matrix_c->cols; j++)
-        {
-            matrix_c->data[i][j] = 0;
-            for (k = 0; k < matrix_a->cols; k++)
-            {
-                matrix_c->data[i][j] += matrix_a->data[i][k] * matrix_b->data[k][j];
-            }
-        }
-    }
-    return matrix_c;
-}
-
-__global__ void matrixMultiplicationKernel(Matrix *matrix_a, Matrix *matrix_b, Matrix *matrix_c)
-{
-    // get the thread id
     int id = threadIdx.x + blockIdx.x * blockDim.x;
-    // get the total number of threads
-    int total_threads = matrix_c->rows * matrix_c->cols;
+    int total_threads = rows_a * cols_b * cols_a;
 
     for (int i = id * total_threads; i < total_threads * id + total_threads; i++)
     {
-        int row = i / matrix_c->cols;
-        int col = i % matrix_c->cols;
-        matrix_c->data[row][col] += matrix_a->data[row][0] * matrix_b->data[0][col];
+        //get the row and column of the matrix_a
+        int id_2d = i % (rows_a * cols_a);
+
+        int row_a = id_2d / cols_a;
+        int col_a = id_2d % cols_a;
+
+        //get the row and column of the matrix_b
+        int row_b = col_a;
+        int col_b = i / (rows_a * cols_a);
+
+        //get the row and column of the matrix_c
+        int row_c = row_a;
+        int col_c = col_b;
+
+        //get the index of the matrix_b
+        int index_b = row_b * cols_b + col_b;
+
+        //get the index of the matrix_c
+        int index_c = row_c * cols_b + col_c;
+
+        matrix_c[index_c] += matrix_a[row_a * cols_a + col_a] * matrix_b[index_b];
     }
 }
 
-    Matrix *allocateMatrixCuda(Matrix * matrix)
+/**
+ * @brief Convert the matrix to a 1D array
+ * 
+ * @param matrix 
+ * @return float* 
+ */
+float *flatMatrix(Matrix matrix)
+{
+    float *flat_matrix = (float *)malloc(matrix.rows * matrix.cols * sizeof(float));
+    for (int i = 0; i < matrix.rows; i++)
     {
-        Matrix cudaMatrix = {matrix->rows, matrix->cols, NULL};
-        cudaMalloc((void **)&cudaMatrix.data, matrix->rows * matrix->cols * sizeof(float));
-        return &cudaMatrix;
+        for (int j = 0; j < matrix.cols; j++)
+        {
+            flat_matrix[i * matrix.cols + j] = matrix.data[i][j];
+        }
+    }
+    return flat_matrix;
+}
+
+
+/**
+ * @brief Convert the matrix to a 1D array and save it on the GPU
+ * 
+ * @param matrix 
+ * @return float* 
+ */
+float *allocateMatrixCUDA(Matrix matrix)
+{
+    float *flat_matrix = flatMatrix(matrix);
+    float *flat_matrix_cuda;
+    cudaMalloc((void **)&flat_matrix_cuda, matrix.rows * matrix.cols * sizeof(float));
+    cudaMemcpy(flat_matrix_cuda, flat_matrix, matrix.rows * matrix.cols * sizeof(float), cudaMemcpyHostToDevice);
+    free(flat_matrix);
+    return flat_matrix_cuda;
+}
+
+/**
+ * @brief Convert the matrix to a 1D array and save it on the GPU
+ * 
+ * @param matrix 
+ * @return float* 
+ */
+bool checkMatrixDimensions(Matrix *matrix_a, Matrix *matrix_b)
+{
+    //chek if matrix multiplication is possible 
+    if (matrix_a->cols != matrix_b->rows)
+    {
+        printf("Matrix multiplication is not possible\n");
+        return false;
+    }
+}
+
+/**
+ * @brief multiply two matrices
+ * @param flat_matrix_a pointer to the first matrix
+ * @param rows number of rows of the first matrix
+ * @param cols number of columns of the first matrix
+ * @return the result of the multiplication
+ */
+Matrix reshapeMatrix(float *flat_matrix, int rows, int cols)
+{
+    Matrix matrix;
+    matrix.rows = rows;
+    matrix.cols = cols;
+    matrix.data = (float **)malloc(matrix.rows * sizeof(float *));
+    for (int i = 0; i < matrix.rows; i++)
+    {
+        matrix.data[i] = (float *)malloc(matrix.cols * sizeof(float));
+    }
+    for (int i = 0; i < matrix.rows; i++)
+    {
+        for (int j = 0; j < matrix.cols; j++)
+        {
+            matrix.data[i][j] = flat_matrix[i * matrix.cols + j];
+        }
+    }
+    return matrix;
+}
+
+/**
+ * @brief multiply two matrices
+ * @param matrix_a pointer to the first matrix
+ * @param matrix_b pointer to the second matrix
+ * @return the result of the multiplication into an 1D array
+ */
+Matrix *parallelMatrixMultiplication(Matrix *matrix_a, Matrix *matrix_b)
+{
+    //check matrix dimensions and raise error if not equal
+    if (!checkMatrixDimensions(matrix_a, matrix_b))
+    {
+        printf("Matrix dimensions do not match\n");
+        return NULL;
     }
 
-    Matrix *parallelMatrixMultiplication(Matrix * matrix_a, Matrix * matrix_b)
-    {
+    // allocate memory for the result
+    Matrix *matrix_c = createMatrix(matrix_a->rows, matrix_b->cols, 0, 0);
+    float *flat_matrix_c = flatMatrix(*matrix_c);
+    // allocate memory on GPU
+    float *matrix_a_gpu = allocateMatrixCUDA(*matrix_a);
+    float *matrix_b_gpu = allocateMatrixCUDA(*matrix_b);
+    float *matrix_c_gpu = allocateMatrixCUDA(*matrix_c);
 
-        // allocate memory for the result
-        Matrix *matrix_c = createMatrix(matrix_a->rows, matrix_b->cols, 0, 0);
+    // create the kernel
+    matrixMultiplicationKernel<<<1, 1>>>(matrix_a_gpu, matrix_b_gpu, matrix_c_gpu, matrix_a->rows, matrix_a->cols, matrix_b->rows, matrix_b->cols);
 
-        // allocate memory on device
-        Matrix *matrix_a_d = allocateMatrixCuda(matrix_a);
-        Matrix *matrix_b_d = allocateMatrixCuda(matrix_b);
-        Matrix *matrix_c_d = allocateMatrixCuda(matrix_c);
+    // copy data from device to host
+    cudaMemcpy(flat_matrix_c, matrix_c_gpu, matrix_c->rows * matrix_c->cols * sizeof(float), cudaMemcpyDeviceToHost);
 
-        // copy data to device
-        cudaMemcpy(matrix_a_d->data, matrix_a->data, matrix_a->rows * matrix_a->cols * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(matrix_b_d->data, matrix_b->data, matrix_b->rows * matrix_b->cols * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(matrix_c_d->data, matrix_c->data, matrix_c->rows * matrix_c->cols * sizeof(float), cudaMemcpyHostToDevice);
+    //reshape the matrix
+    *matrix_c = reshapeMatrix(flat_matrix_c, matrix_c->rows, matrix_c->cols);
 
-        // total number of multiplication
-        int total_multiplication = matrix_a->rows * matrix_b->cols * matrix_b->rows;
-        int total_threads = BLOCKS * THREADS;
+    // free memory
+    cudaFree(matrix_a_gpu);
+    cudaFree(matrix_b_gpu);
+    cudaFree(matrix_c_gpu);
 
-        // create the kernel
-        matrixMultiplicationKernel<<<BLOCKS, THREADS>>>(matrix_a_d, matrix_b_d, matrix_c_d);
+    return matrix_c;
+}
 
-        // copy data from device to host
-        cudaMemcpy(matrix_c->data, matrix_c_d->data, matrix_c->rows * matrix_c->cols * sizeof(float), cudaMemcpyDeviceToHost);
+int main(int argc, char *argv[])
+{
+    // create a matrix of size 3x3
+    int a_rows = 4;
+    int a_cols = 2;
+    int a_start = 1;
+    Matrix *matrix_a = createMatrix(a_rows, a_cols, a_start, 1);
+    printf("Matrix A:\n");
+    printMatrix(matrix_a);
 
-        // free memory
-        freeMatrix(matrix_a_d, true);
-        freeMatrix(matrix_b_d, true);
-        freeMatrix(matrix_c_d, true);
+    // create a matrix of size 3x3
+    int b_rows = 2;
+    int b_cols = 9;
+    int b_start = 1;
+    Matrix *matrix_b = createMatrix(b_rows, b_cols, b_start, 1);
+    printf("Matrix B:\n");
+    printMatrix(matrix_b);
 
-        return matrix_c;
-    }
+    // mutiply the matrices
+    Matrix *matrix_c = parallelMatrixMultiplication(matrix_a, matrix_b);
+    printf("Matrix C:\n");
+    printMatrix(matrix_c);
 
-    int main(int argc, char *argv[])
-    {
-        // create a matrix of size 3x3
-        int a_rows = 3;
-        int a_cols = 4;
-        int a_start = 1;
-        Matrix *matrix_a = createMatrix(a_rows, a_cols, a_start, 1);
+    // free the memory
+    freeMatrix(matrix_a, false);
+    freeMatrix(matrix_b, false);
 
-        // create a matrix of size 3x3
-        int b_rows = 3;
-        int b_cols = 4;
-        int b_start = 1;
-        Matrix *matrix_b = createMatrix(b_rows, b_cols, b_start, 1);
-
-        // mutiply the matrices
-        Matrix *matrix_c = parallelMatrixMultiplication(matrix_a, matrix_b);
-
-        // print the result
-        printMatrix(matrix_c);
-
-        // free the memory
-        freeMatrix(matrix_a, false);
-        freeMatrix(matrix_b, false);
-
-        return 0;
-    }
+    return 0;
+}
