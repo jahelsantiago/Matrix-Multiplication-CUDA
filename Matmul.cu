@@ -1,11 +1,9 @@
 // includes
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
-
-#define BLOCKS 32
-#define THREADS 256
 
 struct Matrix
 {
@@ -21,7 +19,6 @@ struct Matrix
  * @param start start value of the matrix
  * @return a matrix with the numbers a to (n^2) + a
  */
-
 Matrix *createMatrix(int rows, int cols, int start, float factor)
 {
     // allocates memory for the matrix
@@ -157,7 +154,6 @@ float *flatMatrix(Matrix matrix)
     return flat_matrix;
 }
 
-
 /**
  * @brief Convert the matrix to a 1D array and save it on the GPU
  * 
@@ -176,13 +172,12 @@ float *allocateMatrixCUDA(Matrix matrix)
 
 /**
  * @brief Convert the matrix to a 1D array and save it on the GPU
- * 
  * @param matrix 
  * @return float* 
  */
 bool checkMatrixDimensions(Matrix *matrix_a, Matrix *matrix_b)
 {
-    //chek if matrix multiplication is possible 
+    // check if matrix multiplication is possible
     if (matrix_a->cols != matrix_b->rows)
     {
         printf("Matrix multiplication is not possible\n");
@@ -223,7 +218,7 @@ Matrix reshapeMatrix(float *flat_matrix, int rows, int cols)
  * @param matrix_b pointer to the second matrix
  * @return the result of the multiplication into an 1D array
  */
-Matrix *parallelMatrixMultiplication(Matrix *matrix_a, Matrix *matrix_b)
+Matrix *parallelMatrixMultiplication(Matrix *matrix_a, Matrix *matrix_b, int BLOCKS, int THREADS)
 {
     //check matrix dimensions and raise error if not equal
     if (!checkMatrixDimensions(matrix_a, matrix_b))
@@ -235,13 +230,14 @@ Matrix *parallelMatrixMultiplication(Matrix *matrix_a, Matrix *matrix_b)
     // allocate memory for the result
     Matrix *matrix_c = createMatrix(matrix_a->rows, matrix_b->cols, 0, 0);
     float *flat_matrix_c = flatMatrix(*matrix_c);
+
     // allocate memory on GPU
     float *matrix_a_gpu = allocateMatrixCUDA(*matrix_a);
     float *matrix_b_gpu = allocateMatrixCUDA(*matrix_b);
     float *matrix_c_gpu = allocateMatrixCUDA(*matrix_c);
 
     // create the kernel
-    matrixMultiplicationKernel<<<1, 1>>>(matrix_a_gpu, matrix_b_gpu, matrix_c_gpu, matrix_a->rows, matrix_a->cols, matrix_b->rows, matrix_b->cols);
+    matrixMultiplicationKernel<<<BLOCKS, THREADS>>>(matrix_a_gpu, matrix_b_gpu, matrix_c_gpu, matrix_a->rows, matrix_a->cols, matrix_b->rows, matrix_b->cols);
 
     // copy data from device to host
     cudaMemcpy(flat_matrix_c, matrix_c_gpu, matrix_c->rows * matrix_c->cols * sizeof(float), cudaMemcpyDeviceToHost);
@@ -259,30 +255,40 @@ Matrix *parallelMatrixMultiplication(Matrix *matrix_a, Matrix *matrix_b)
 
 int main(int argc, char *argv[])
 {
-    // create a matrix of size 3x3
-    int a_rows = 4;
-    int a_cols = 2;
-    int a_start = 1;
-    Matrix *matrix_a = createMatrix(a_rows, a_cols, a_start, 1);
-    printf("Matrix A:\n");
-    printMatrix(matrix_a);
 
-    // create a matrix of size 3x3
-    int b_rows = 2;
-    int b_cols = 9;
-    int b_start = 1;
-    Matrix *matrix_b = createMatrix(b_rows, b_cols, b_start, 1);
+    if (argc != 5) {
+        printf("Usage: %s <rows> <cols> <blocks> <threads_per_block> \n", argv[0]);
+        return 1;
+    }
+
+    int num_rows = atoi(argv[1]);
+    int num_cols = atoi(argv[2]);
+    int num_blocks = atoi(argv[3]);
+    int num_threads_per_block = atoi(argv[4]);
+
+    // create the matrices
+    Matrix *matrix_a = createMatrix(num_rows, num_cols, 1, 1);
+    Matrix *matrix_b = createMatrix(num_rows, num_cols, 1, 1);
+
+    // multiply the matrices and take the time
+    clock_t start = clock();
+    Matrix *matrix_c = parallelMatrixMultiplication(matrix_a, matrix_b, num_blocks, num_threads_per_block);
+    clock_t end = clock();
+
+    // print the time
+    printf("Time: %.15Lf\n", (long double)(end - start) / CLOCKS_PER_SEC);
+
+    /*printf("Matrix A:\n");
+    printMatrix(matrix_a);
     printf("Matrix B:\n");
     printMatrix(matrix_b);
-
-    // mutiply the matrices
-    Matrix *matrix_c = parallelMatrixMultiplication(matrix_a, matrix_b);
     printf("Matrix C:\n");
-    printMatrix(matrix_c);
+    printMatrix(matrix_c);*/
 
     // free the memory
     freeMatrix(matrix_a, false);
     freeMatrix(matrix_b, false);
+    freeMatrix(matrix_c, false);
 
     return 0;
 }

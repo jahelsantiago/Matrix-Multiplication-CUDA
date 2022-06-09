@@ -1,0 +1,128 @@
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 8 x 8 
+Time: 0.000000000000000
+
+>> 2 threads for a matrix of size 8 x 8 
+Time: 0.000000000000000
+
+>> 4 threads for a matrix of size 8 x 8 
+Time: 0.000000000000000
+
+>> 8 threads for a matrix of size 8 x 8 
+Time: 0.002000000000000
+
+>> 16 threads for a matrix of size 8 x 8 
+Time: 0.002000000000000
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 16 x 16 
+Time: 0.000000000000000
+
+>> 2 threads for a matrix of size 16 x 16 
+Time: 0.000000000000000
+
+>> 4 threads for a matrix of size 16 x 16 
+Time: 0.000000000000000
+
+>> 8 threads for a matrix of size 16 x 16 
+Time: 0.000000000000000
+
+>> 16 threads for a matrix of size 16 x 16 
+Time: 0.001000000000000
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 32 x 32 
+Time: 0.000000000000000
+
+>> 2 threads for a matrix of size 32 x 32 
+Time: 0.000000000000000
+
+>> 4 threads for a matrix of size 32 x 32 
+Time: 0.001000000000000
+
+>> 8 threads for a matrix of size 32 x 32 
+Time: 0.000000000000000
+
+>> 16 threads for a matrix of size 32 x 32 
+Time: 0.003000000000000
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 64 x 64 
+Time: 0.000000000000000
+
+>> 2 threads for a matrix of size 64 x 64 
+Time: 0.001000000000000
+
+>> 4 threads for a matrix of size 64 x 64 
+Time: 0.002000000000000
+
+>> 8 threads for a matrix of size 64 x 64 
+Time: 0.001000000000000
+
+>> 16 threads for a matrix of size 64 x 64 
+Time: 0.001000000000000
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 128 x 128 
+Time: 0.008000000000000
+
+>> 2 threads for a matrix of size 128 x 128 
+Time: 0.007000000000000
+
+>> 4 threads for a matrix of size 128 x 128 
+Time: 0.005000000000000
+
+>> 8 threads for a matrix of size 128 x 128 
+Time: 0.003000000000000
+
+>> 16 threads for a matrix of size 128 x 128 
+Time: 0.004000000000000
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 256 x 256 
+Time: 0.075000000000000
+
+>> 2 threads for a matrix of size 256 x 256 
+Time: 0.040000000000000
+
+>> 4 threads for a matrix of size 256 x 256 
+Time: 0.025000000000000
+
+>> 8 threads for a matrix of size 256 x 256 
+Time: 0.024000000000000
+
+>> 16 threads for a matrix of size 256 x 256 
+Time: 0.028000000000000
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 512 x 512 
+Time: 0.735000000000000
+
+>> 2 threads for a matrix of size 512 x 512 
+Time: 0.472000000000000
+
+>> 4 threads for a matrix of size 512 x 512 
+Time: 0.287000000000000
+
+>> 8 threads for a matrix of size 512 x 512 
+Time: 0.202000000000000
+
+>> 16 threads for a matrix of size 512 x 512 
+Time: 0.199000000000000
+------------------------------------------------------
+
+>> 1 threads for a matrix of size 1024 x 1024 
+Time: 8.825000000000000
+
+>> 2 threads for a matrix of size 1024 x 1024 
+Time: 4.907000000000000
+
+>> 4 threads for a matrix of size 1024 x 1024 
+Time: 3.273000000000000
+
+>> 8 threads for a matrix of size 1024 x 1024 
+Time: 3.062000000000000
+
+>> 16 threads for a matrix of size 1024 x 1024 
+Time: 2.827000000000000
